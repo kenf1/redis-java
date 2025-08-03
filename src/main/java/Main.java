@@ -35,25 +35,18 @@ public class Main {
             String content;
 
             while ((content = clientInput.readLine()) != null) {
-                String response = handleContent(content, clientInput);
+                if (content.equalsIgnoreCase("ping")) {
+                    clientOutput.write("+PONG\r\n");
+                    clientOutput.flush();
+                } else if (content.equalsIgnoreCase("echo")) {
+                    String numBytes = clientInput.readLine();
 
-                clientOutput.write(response);
-                clientOutput.flush();
+                    clientOutput.write(numBytes + "\r\n" + clientInput.readLine() + "\r\n");
+                    clientOutput.flush();
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static String handleContent(String content, BufferedReader clientInput) throws IOException {
-        if (content.equalsIgnoreCase("ping")) {
-            return "+PONG\r\n";
-        } else if (content.equalsIgnoreCase("echo")) {
-            String numBytes = clientInput.readLine();
-            String message = clientInput.readLine();
-            return numBytes + "\r\n" + message + "\r\n";
-        }
-        
-        return "-UNKNOWN_COMMAND\r\n";
     }
 }
