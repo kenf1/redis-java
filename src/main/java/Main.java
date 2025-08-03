@@ -1,42 +1,51 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Logs from your program will appear here!");
-
-        ServerSocket serverSocket = null;
-        Socket clientSocket = null;
         int port = 6379;
+        boolean listening = true;
 
-        try {
-            serverSocket = new ServerSocket(port);
-            // Since the tester restarts your program quite often, setting SO_REUSEADDR
-            // ensures that we don't run into 'Address already in use' errors
+        try (ServerSocket serverSocket = new ServerSocket(port)) {
+            // Since the tester restarts your program quite often, setting
+            // SO_REUSEADDR ensures that we don't run into 'Address already in use'
+            // errors
             serverSocket.setReuseAddress(true);
-            // Wait for connection from client.
-            clientSocket = serverSocket.accept();
 
-            while (true) {
-                byte[] input = new byte[1024];
-                clientSocket.getInputStream().read(input);
+            while (listening) {
+                Socket clientSocket = serverSocket.accept();
+                System.out.println("New client connected");
 
-                String inputString = new String(input).trim();
-                System.out.println("Received: " + inputString);
-
-                clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
+                new Thread(() -> handleClient(clientSocket))
+                        .start();
             }
         } catch (IOException e) {
             System.out.println("IOException: " + e.getMessage());
-        } finally {
-            try {
-                if (clientSocket != null) {
-                    clientSocket.close();
+            System.exit(-1);
+        }
+    }
+
+    static void handleClient(Socket clientSocket) {
+        try (clientSocket;
+             OutputStream outputStream = clientSocket.getOutputStream();
+             BufferedReader in = new BufferedReader(
+                     new InputStreamReader(clientSocket.getInputStream()))
+        ) {
+            while (true) {
+                if (in.readLine() == null) {
+                    break;
                 }
-            } catch (IOException e) {
-                System.out.println("IOException: " + e.getMessage());
+
+                String line = in.readLine();
+
+                outputStream.write("+PONG\r\n".getBytes());
             }
+        } catch (IOException e) {
+            System.out.println("IOException: " + e.getMessage());
         }
     }
 }
