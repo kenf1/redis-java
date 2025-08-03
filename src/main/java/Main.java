@@ -1,7 +1,4 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -20,7 +17,7 @@ public class Main {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("New client connected");
 
-                new Thread(() -> handleClient(clientSocket))
+                new Thread(() -> processBuffer(clientSocket))
                         .start();
             }
         } catch (IOException e) {
@@ -29,23 +26,34 @@ public class Main {
         }
     }
 
-    static void handleClient(Socket clientSocket) {
-        try (clientSocket;
-             OutputStream outputStream = clientSocket.getOutputStream();
-             BufferedReader in = new BufferedReader(
-                     new InputStreamReader(clientSocket.getInputStream()))
+    private static void processBuffer(Socket clientSocket) {
+        try (BufferedReader clientInput = new BufferedReader(
+                new InputStreamReader(clientSocket.getInputStream()));
+             BufferedWriter clientOutput = new BufferedWriter(
+                     new OutputStreamWriter(clientSocket.getOutputStream()))
         ) {
-            while (true) {
-                if (in.readLine() == null) {
-                    break;
-                }
+            String content;
 
-                String line = in.readLine();
+            while ((content = clientInput.readLine()) != null) {
+                String response = handleContent(content, clientInput);
 
-                outputStream.write("+PONG\r\n".getBytes());
+                clientOutput.write(response);
+                clientOutput.flush();
             }
         } catch (IOException e) {
-            System.out.println("IOException: " + e.getMessage());
+            throw new RuntimeException(e);
         }
+    }
+
+    private static String handleContent(String content, BufferedReader clientInput) throws IOException {
+        if (content.equalsIgnoreCase("ping")) {
+            return "+PONG\r\n";
+        } else if (content.equalsIgnoreCase("echo")) {
+            String numBytes = clientInput.readLine();
+            String message = clientInput.readLine();
+            return numBytes + "\r\n" + message + "\r\n";
+        }
+        
+        return "-UNKNOWN_COMMAND\r\n";
     }
 }
