@@ -1,4 +1,4 @@
-.PHONY: gh cc clean
+.PHONY: gh cc clean tests
 
 gh: #Push github repo master branch
 	git push -u github master
@@ -8,3 +8,6 @@ cc: #Push cc test server
 
 clean:
 	rm -rf target
+
+tests:
+	mvn test
