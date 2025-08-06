@@ -3,10 +3,11 @@ import server.InputHandler;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class InputHandlerTests {
     @Test
@@ -14,7 +15,7 @@ public class InputHandlerTests {
         StringWriter output = new StringWriter();
         BufferedWriter writer = new BufferedWriter(output);
 
-        InputHandler.handleInput("ping", writer, null);
+        InputHandler.handleInput("ping", writer, mock(BufferedReader.class));
 
         writer.flush();
         assertEquals("+PONG\r\n", output.toString());
@@ -22,28 +23,26 @@ public class InputHandlerTests {
 
     @Test
     void testEchoResponse() throws Exception {
-        StringReader input = new StringReader("5\nhello\n");
-
-        BufferedReader reader = new BufferedReader(input);
+        BufferedReader mockReader = mock(BufferedReader.class);
+        when(mockReader.readLine()).thenReturn("5", "hello");
 
         StringWriter output = new StringWriter();
         BufferedWriter writer = new BufferedWriter(output);
 
-        InputHandler.handleInput("echo", writer, reader);
+        InputHandler.handleInput("echo", writer, mockReader);
 
         writer.flush();
         assertEquals("5\r\nhello\r\n", output.toString());
     }
 
     @Test
-    void testInvalidInputResponse() throws Exception {
+    void testInvalidInput() throws Exception {
         StringWriter output = new StringWriter();
         BufferedWriter writer = new BufferedWriter(output);
 
-        InputHandler.handleInput("foobar", writer, null);
+        InputHandler.handleInput("foobar", writer, mock(BufferedReader.class));
 
         writer.flush();
         assertEquals("Invalid input\r\n", output.toString());
     }
 }
-
