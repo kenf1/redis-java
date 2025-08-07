@@ -39,7 +39,8 @@ public class InputHandler {
         }
     }
 
-    private static void handleInput(
+    //set to public to avoid reflection
+    public static void handleInput(
             String content, BufferedWriter clientOutput, BufferedReader clientInput
     ) throws IOException {
         if (content.equalsIgnoreCase("ping")) {
