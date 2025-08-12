@@ -8,12 +8,13 @@ import java.io.StringReader;
 import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class InputHandlerTests {
-    //hashmap in memory
     @BeforeEach
     void clearDb() {
         InputHandler.db.clear();
+        InputHandler.expiryDb.clear();
     }
 
     @Test
@@ -129,5 +130,59 @@ public class InputHandlerTests {
         writer.flush();
 
         assertEquals("-ERR wrong number of arguments for 'get' command\r\n", output.toString());
+    }
+
+    @Test
+    void testSetWithPXBeforeExpiry() throws Exception {
+        //same as before
+        String respInput = "*5\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$5\r\nhello\r\n$2\r\nPX\r\n$4\r\n1000\r\n";
+        BufferedReader reader = new BufferedReader(new StringReader(respInput));
+
+        StringWriter output = new StringWriter();
+        BufferedWriter writer = new BufferedWriter(output);
+
+        InputHandler.handleInput(writer, reader);
+        writer.flush();
+
+        assertEquals("+OK\r\n", output.toString());
+
+        //get before expires
+        String getCmd = "*2\r\n$3\r\nGET\r\n$5\r\nmykey\r\n";
+        reader = new BufferedReader(new StringReader(getCmd));
+
+        output = new StringWriter();
+        writer = new BufferedWriter(output);
+
+        InputHandler.handleInput(writer, reader);
+        writer.flush();
+
+        assertEquals("$5\r\nhello\r\n", output.toString());
+    }
+
+    @Test
+    void testSetWithPXAfterExpiry() throws Exception {
+        String respInput =
+                "*5\r\n$3\r\nSET\r\n$4\r\ntemp\r\n$3\r\nval\r\n$2\r\nPX\r\n$2\r\n50\r\n";
+
+        BufferedReader reader = new BufferedReader(new StringReader(respInput));
+        StringWriter output = new StringWriter();
+        BufferedWriter writer = new BufferedWriter(output);
+        InputHandler.handleInput(writer, reader);
+        writer.flush();
+        assertEquals("+OK\r\n", output.toString());
+
+
+        //force expire
+        Thread.sleep(120);
+        String getCmd = "*2\r\n$3\r\nGET\r\n$4\r\ntemp\r\n";
+
+        reader = new BufferedReader(new StringReader(getCmd));
+        output = new StringWriter();
+        writer = new BufferedWriter(output);
+        InputHandler.handleInput(writer, reader);
+        writer.flush();
+
+        assertEquals("$-1\r\n", output.toString());
+        assertNull(InputHandler.db.get("temp"));
     }
 }
