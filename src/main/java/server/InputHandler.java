@@ -8,6 +8,7 @@ import java.util.Map;
 
 public class InputHandler {
     public static final Map<String, String> db = new HashMap<>();
+    public static final Map<String, Long> expiryDb = new HashMap<>();
 
     public static void mainWrapper(int port, boolean listening) {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
@@ -139,6 +140,9 @@ public class InputHandler {
             case "set":
                 if (args.length >= 3 && args[1] != null && args[2] != null) {
                     db.put(args[1], args[2]);
+
+                    if (setExpiry(clientOutput, args)) return;
+
                     clientOutput.write("+OK\r\n");
                 } else {
                     clientOutput.write("-ERR wrong number of arguments for 'set' command\r\n");
@@ -147,7 +151,22 @@ public class InputHandler {
                 break;
             case "get":
                 if (args.length >= 2 && args[1] != null) {
+                    String key = args[1];
+
+                    if (expiryDb.containsKey(key)) {
+                        long expiryTime = expiryDb.get(key);
+                        if (System.currentTimeMillis() > expiryTime) {
+                            expiryDb.remove(key);
+                            db.remove(key);
+                            
+                            clientOutput.write("$-1\r\n");
+                            clientOutput.flush();
+                            return;
+                        }
+                    }
+
                     String val = db.get(args[1]);
+
                     if (val != null) {
                         clientOutput.write("$" + val.length() + "\r\n" + val + "\r\n");
                     } else {
@@ -163,5 +182,19 @@ public class InputHandler {
                 clientOutput.flush();
                 break;
         }
+    }
+
+    private static boolean setExpiry(BufferedWriter clientOutput, String[] args) throws IOException {
+        if (args.length >= 5 && "px".equalsIgnoreCase(args[3]) && args[4] != null) {
+            try {
+                long pxMillis = Long.parseLong(args[4]);
+                expiryDb.put(args[1], System.currentTimeMillis() + pxMillis);
+            } catch (NumberFormatException e) {
+                clientOutput.write("-ERR PX value is not a valid integer\r\n");
+                clientOutput.flush();
+                return true;
+            }
+        }
+        return false;
     }
 }
