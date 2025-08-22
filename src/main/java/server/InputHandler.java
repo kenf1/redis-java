@@ -33,9 +33,8 @@ public class InputHandler {
              BufferedWriter clientOutput = new BufferedWriter(
                      new OutputStreamWriter(clientSocket.getOutputStream()))
         ) {
-            while (true) {
-                //read each line in subsequent order
-                handleInput(clientOutput, clientInput);
+            while (handleInput(clientOutput, clientInput)) {
+                System.out.println("Handled input...");
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
