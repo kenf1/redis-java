@@ -1,9 +1,10 @@
 import server.InputHandler;
 
+import java.util.HashMap;
+
 public class Main {
     public static void main(String[] args) {
-        int port = 6379;
-
-        InputHandler.mainWrapper(port, true);
+        InputHandler handler = new InputHandler(new HashMap<>(), 6379, true);
+        handler.run();
     }
 }

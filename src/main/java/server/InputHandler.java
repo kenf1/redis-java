@@ -3,13 +3,21 @@ package server;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.Map;
 
 public class InputHandler {
-    public static final Map<String, String> db = new HashMap<>();
+    //dependency injection
+    public final Map<String, String> db;
+    private final int port;
+    private final boolean listening;
 
-    public static void mainWrapper(int port, boolean listening) {
+    public InputHandler(Map<String, String> db, int port, boolean listening) {
+        this.db = db;
+        this.port = port;
+        this.listening = listening;
+    }
+
+    public void run() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             serverSocket.setReuseAddress(true);
 
@@ -27,22 +35,8 @@ public class InputHandler {
         }
     }
 
-    private static void processBuffer(Socket clientSocket) {
-        try (BufferedReader clientInput = new BufferedReader(
-                new InputStreamReader(clientSocket.getInputStream()));
-             BufferedWriter clientOutput = new BufferedWriter(
-                     new OutputStreamWriter(clientSocket.getOutputStream()))
-        ) {
-            while (handleInput(clientOutput, clientInput)) {
-                System.out.println("Handled input...");
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     //set to public to avoid reflection
-    public static boolean handleInput(
+    public boolean handleInput(
             BufferedWriter clientOutput, BufferedReader clientInput
     ) throws IOException {
         String line = clientInput.readLine(); //determine number of arguments *<num>\r\n
@@ -163,5 +157,19 @@ public class InputHandler {
                 break;
         }
         return false;
+    }
+
+    private void processBuffer(Socket clientSocket) {
+        try (BufferedReader clientInput = new BufferedReader(
+                new InputStreamReader(clientSocket.getInputStream()));
+             BufferedWriter clientOutput = new BufferedWriter(
+                     new OutputStreamWriter(clientSocket.getOutputStream()))
+        ) {
+            while (handleInput(clientOutput, clientInput)) {
+                System.out.println("Handled input...");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

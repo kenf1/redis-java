@@ -6,13 +6,13 @@ import java.io.StringReader;
 import java.io.StringWriter;
 
 public class TestsHelper {
-    public static String runInputHandler(String respInput) throws Exception {
+    public static String runInputHandler(String respInput,InputHandler handler) throws Exception {
         BufferedReader reader = new BufferedReader(new StringReader(respInput));
 
         StringWriter output = new StringWriter();
         BufferedWriter writer = new BufferedWriter(output);
 
-        InputHandler.handleInput(writer, reader);
+        handler.handleInput(writer, reader);
         writer.flush();
 
         return output.toString();
