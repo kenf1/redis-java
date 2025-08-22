@@ -6,22 +6,24 @@ import java.net.Socket;
 import java.util.Map;
 
 public class InputHandler {
-    //dependency injection
     public final Map<String, String> db;
     private final int port;
-    private final boolean listening;
+    private volatile boolean listening;
 
-    public InputHandler(Map<String, String> db, int port, boolean listening) {
+    public InputHandler(Map<String, String> db, int port) {
         this.db = db;
         this.port = port;
-        this.listening = listening;
+        this.listening = true;
     }
 
-    public void run() {
+    public Map<String, String> db() {
+        return db;
+    }
+
+    public void startServer() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             serverSocket.setReuseAddress(true);
 
-            //todo: fix loop
             while (listening) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("New client connected");
@@ -35,7 +37,11 @@ public class InputHandler {
         }
     }
 
-    //set to public to avoid reflection
+    public void stopServer() {
+        listening = false;
+    }
+
+    //set public to avoid reflection
     public boolean handleInput(
             BufferedWriter clientOutput, BufferedReader clientInput
     ) throws IOException {
@@ -61,52 +67,8 @@ public class InputHandler {
             return false;
         }
 
-        String[] args = new String[numArgs];
-        for (int i = 0; i < numArgs; i++) {
-            String bulkLenLine = clientInput.readLine();
-            if (bulkLenLine == null || !bulkLenLine.startsWith("$")) {
-                clientOutput.write("-ERR Protocol error: expected '$' line\r\n");
-                clientOutput.flush();
-                return false;
-            }
-
-            int bulkLen;
-            try {
-                bulkLen = Integer.parseInt(bulkLenLine.substring(1));
-            } catch (NumberFormatException e) {
-                clientOutput.write("-ERR Protocol error: invalid bulk length\r\n");
-                clientOutput.flush();
-                return false;
-            }
-
-            if (bulkLen < 0) {
-                args[i] = null;
-                clientInput.readLine();
-                continue;
-            }
-
-            char[] buf = new char[bulkLen];
-            int read = 0;
-            while (read < bulkLen) {
-                int r = clientInput.read(buf, read, bulkLen - read);
-                if (r == -1) {
-                    clientOutput.write("-ERR Protocol error: unexpected stream end\r\n");
-                    clientOutput.flush();
-                    return false;
-                }
-                read += r;
-            }
-
-            args[i] = new String(buf);
-
-            // read ending \r\n after bulk string data
-            String crlf = clientInput.readLine();
-            if (crlf == null) {
-                clientOutput.write("-ERR Protocol error: expected CRLF after bulk string\r\n");
-                clientOutput.flush();
-                return false;
-            }
-        }
+        String[] args = HandlerHelper.tryHandleBulkString(clientOutput, clientInput, numArgs);
+        if (args == null) return false;
 
         String command = args[0];
         if (command == null) {
