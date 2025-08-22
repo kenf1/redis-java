@@ -42,14 +42,14 @@ public class InputHandler {
     }
 
     //set to public to avoid reflection
-    public static void handleInput(
+    public static boolean handleInput(
             BufferedWriter clientOutput, BufferedReader clientInput
     ) throws IOException {
         String line = clientInput.readLine(); //determine number of arguments *<num>\r\n
         if (line == null || !line.startsWith("*")) {
             clientOutput.write("-ERR Protocol error: expected '*'\r\n");
             clientOutput.flush();
-            return;
+            return false;
         }
 
         int numArgs;
@@ -58,13 +58,13 @@ public class InputHandler {
         } catch (NumberFormatException e) {
             clientOutput.write("-ERR Protocol error: invalid multibulk length\r\n");
             clientOutput.flush();
-            return;
+            return false;
         }
 
         if (numArgs < 1) {
             clientOutput.write("-ERR Protocol error: invalid number of arguments\r\n");
             clientOutput.flush();
-            return;
+            return false;
         }
 
         String[] args = new String[numArgs];
@@ -73,7 +73,7 @@ public class InputHandler {
             if (bulkLenLine == null || !bulkLenLine.startsWith("$")) {
                 clientOutput.write("-ERR Protocol error: expected '$' line\r\n");
                 clientOutput.flush();
-                return;
+                return false;
             }
 
             int bulkLen;
@@ -82,7 +82,7 @@ public class InputHandler {
             } catch (NumberFormatException e) {
                 clientOutput.write("-ERR Protocol error: invalid bulk length\r\n");
                 clientOutput.flush();
-                return;
+                return false;
             }
 
             if (bulkLen < 0) {
@@ -98,7 +98,7 @@ public class InputHandler {
                 if (r == -1) {
                     clientOutput.write("-ERR Protocol error: unexpected stream end\r\n");
                     clientOutput.flush();
-                    return;
+                    return false;
                 }
                 read += r;
             }
@@ -110,7 +110,7 @@ public class InputHandler {
             if (crlf == null) {
                 clientOutput.write("-ERR Protocol error: expected CRLF after bulk string\r\n");
                 clientOutput.flush();
-                return;
+                return false;
             }
         }
 
@@ -118,7 +118,7 @@ public class InputHandler {
         if (command == null) {
             clientOutput.write("-ERR Protocol error: Command is null\r\n");
             clientOutput.flush();
-            return;
+            return false;
         }
 
         switch (command.toLowerCase()) {
@@ -162,5 +162,6 @@ public class InputHandler {
                 clientOutput.flush();
                 break;
         }
+        return false;
     }
 }
