@@ -18,25 +18,6 @@ public class InputHandler {
         this.listening = true;
     }
 
-    private static void checkEmptyInput(BufferedWriter clientOutput, String val) throws IOException {
-        if (val != null) {
-            clientOutput.write("$" + val.length() + "\r\n" + val + "\r\n");
-        } else {
-            clientOutput.write("$-1\r\n");
-        }
-    }
-
-    public void setExpiry(BufferedWriter clientOutput, String[] args) {
-        if (args.length >= 5 && "px".equalsIgnoreCase(args[3]) && args[4] != null) {
-            try {
-                long pxMillis = Long.parseLong(args[4]);
-                expiryDB.put(args[1], System.currentTimeMillis() + pxMillis);
-            } catch (NumberFormatException e) {
-                System.out.println("Error: " + e);
-            }
-        }
-    }
-
     public Map<String, String> db() {
         return db;
     }
@@ -115,7 +96,7 @@ public class InputHandler {
             case "set":
                 if (args.length >= 3 && args[1] != null && args[2] != null) {
                     db.put(args[1], args[2]);
-                    setExpiry(clientOutput, args);
+                    InMemoryDB.setExpiry(expiryDB, args);
 
                     clientOutput.write("+OK\r\n");
                 } else {
@@ -127,7 +108,7 @@ public class InputHandler {
             case "get":
                 if (args.length >= 2 && args[1] != null) {
                     String key = args[1];
-                    getValueFromKey(clientOutput, key);
+                    InMemoryDB.getValueFromKey(clientOutput, key,db,expiryDB);
                 } else {
                     clientOutput.write("-ERR wrong number of arguments for 'get' command\r\n");
                 }
@@ -137,27 +118,6 @@ public class InputHandler {
                 clientOutput.write("-ERR unknown command\r\n");
                 clientOutput.flush();
                 break;
-        }
-        return false;
-    }
-
-    private void getValueFromKey(BufferedWriter clientOutput, String key) throws IOException {
-        if (checkExpiry(key)) {
-            clientOutput.write("$-1\r\n");
-        } else {
-            String val = db.get(key);
-            checkEmptyInput(clientOutput, val);
-        }
-    }
-
-    private boolean checkExpiry(String key) {
-        if (expiryDB.containsKey(key)) {
-            long expiryTime = expiryDB.get(key);
-            if (System.currentTimeMillis() > expiryTime) {
-                expiryDB.remove(key);
-                db.remove(key);
-                return true;
-            }
         }
         return false;
     }
