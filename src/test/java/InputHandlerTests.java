@@ -2,8 +2,10 @@ import org.junit.jupiter.api.Test;
 import server.InputHandler;
 
 import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class InputHandlerTests {
     @Test
@@ -91,9 +93,13 @@ public class InputHandlerTests {
 
     @Test
     void testSetWithPXBeforeExpiry() throws Exception {
+        //share same db for set & get
+        Map<String, String> db = new HashMap<>();
+        Map<String, Long> expiryDB = new HashMap<>();
+
         String respInput = "*5\r\n$3\r\nSET\r\n$5\r\nmykey\r\n$5\r\nhello\r\n$2\r\nPX\r\n$4\r\n1000\r\n";
 
-        InputHandler handler = new InputHandler(new HashMap<>(),new HashMap<>(), 6379);
+        InputHandler handler = new InputHandler(db,expiryDB, 6379);
         String output = TestsHelper.runInputHandler(respInput,handler);
 
         assertEquals("+OK\r\n", output);
@@ -101,7 +107,7 @@ public class InputHandlerTests {
         //get before expires
         String getCmd = "*2\r\n$3\r\nGET\r\n$5\r\nmykey\r\n";
 
-        InputHandler getHandler = new InputHandler(new HashMap<>(),new HashMap<>(), 6379);
+        InputHandler getHandler = new InputHandler(db,expiryDB, 6379);
         String getOutput = TestsHelper.runInputHandler(getCmd,getHandler);
 
         assertEquals("$5\r\nhello\r\n", getOutput);
@@ -109,10 +115,13 @@ public class InputHandlerTests {
 
     @Test
     void testSetWithPXAfterExpiry() throws Exception {
+        Map<String, String> db = new HashMap<>();
+        Map<String, Long> expiryDB = new HashMap<>();
+
         String respInput =
                 "*5\r\n$3\r\nSET\r\n$4\r\ntemp\r\n$3\r\nval\r\n$2\r\nPX\r\n$2\r\n50\r\n";
 
-        InputHandler handler = new InputHandler(new HashMap<>(),new HashMap<>(), 6379);
+        InputHandler handler = new InputHandler(db,expiryDB, 6379);
         String output = TestsHelper.runInputHandler(respInput,handler);
 
         assertEquals("+OK\r\n", output);
@@ -122,11 +131,10 @@ public class InputHandlerTests {
         Thread.sleep(120);
         String getCmd = "*2\r\n$3\r\nGET\r\n$4\r\ntemp\r\n";
 
-        InputHandler getHandler = new InputHandler(new HashMap<>(),new HashMap<>(), 6379);
-        String getOutput = TestsHelper.runInputHandler(respInput,getHandler);
+        InputHandler getHandler = new InputHandler(db,expiryDB, 6379);
+        String getOutput = TestsHelper.runInputHandler(getCmd,getHandler);
 
-        assertEquals("$-1\r\n", output);
-        //assertNull(InputHandler.db.get("temp"));
+        assertEquals("$-1\r\n", getOutput);
+        assertNull(db.get("temp"));
     }
-
 }

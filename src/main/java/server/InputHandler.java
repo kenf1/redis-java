@@ -127,10 +127,7 @@ public class InputHandler {
             case "get":
                 if (args.length >= 2 && args[1] != null) {
                     String key = args[1];
-                    checkExpiry(clientOutput, key);
-
-                    String val = db.get(args[1]);
-                    checkEmptyInput(clientOutput, val);
+                    getValueFromKey(clientOutput, key);
                 } else {
                     clientOutput.write("-ERR wrong number of arguments for 'get' command\r\n");
                 }
@@ -144,18 +141,25 @@ public class InputHandler {
         return false;
     }
 
-    private void checkExpiry(BufferedWriter clientOutput, String key) throws IOException {
-        if(expiryDB.containsKey(key)){
-            long expiryTime = expiryDB.get(key);
+    private void getValueFromKey(BufferedWriter clientOutput, String key) throws IOException {
+        if (checkExpiry(key)) {
+            clientOutput.write("$-1\r\n");
+        } else {
+            String val = db.get(key);
+            checkEmptyInput(clientOutput, val);
+        }
+    }
 
-            if(System.currentTimeMillis() > expiryTime){
+    private boolean checkExpiry(String key) {
+        if (expiryDB.containsKey(key)) {
+            long expiryTime = expiryDB.get(key);
+            if (System.currentTimeMillis() > expiryTime) {
                 expiryDB.remove(key);
                 db.remove(key);
-
-                clientOutput.write("$-1\r\n");
-                clientOutput.flush();
+                return true;
             }
         }
+        return false;
     }
 
     private void processBuffer(Socket clientSocket) {
