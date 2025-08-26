@@ -102,7 +102,7 @@ public class InputHandlerTests {
         String getCmd = "*2\r\n$3\r\nGET\r\n$5\r\nmykey\r\n";
 
         InputHandler getHandler = new InputHandler(new HashMap<>(),new HashMap<>(), 6379);
-        String getOutput = TestsHelper.runInputHandler(respInput,getHandler);
+        String getOutput = TestsHelper.runInputHandler(getCmd,getHandler);
 
         assertEquals("$5\r\nhello\r\n", getOutput);
     }

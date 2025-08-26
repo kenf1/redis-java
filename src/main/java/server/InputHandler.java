@@ -26,18 +26,15 @@ public class InputHandler {
         }
     }
 
-    public boolean setExpiry(BufferedWriter clientOutput,String[] args) throws IOException{
+    public void setExpiry(BufferedWriter clientOutput, String[] args) {
         if (args.length >= 5 && "px".equalsIgnoreCase(args[3]) && args[4] != null) {
             try {
                 long pxMillis = Long.parseLong(args[4]);
                 expiryDB.put(args[1], System.currentTimeMillis() + pxMillis);
             } catch (NumberFormatException e) {
-                clientOutput.write("-ERR PX value is not a valid integer\r\n");
-                clientOutput.flush();
-                return true;
+                System.out.println("Error: " + e);
             }
         }
-        return false;
     }
 
     public Map<String, String> db() {
@@ -118,33 +115,20 @@ public class InputHandler {
             case "set":
                 if (args.length >= 3 && args[1] != null && args[2] != null) {
                     db.put(args[1], args[2]);
-
-                    if (setExpiry(clientOutput,args)) break;
-
-                    String key = args[1];
-                    if(expiryDB.containsKey(key)){
-                        long expiryTime = expiryDB.get(key);
-
-                        if(System.currentTimeMillis() > expiryTime){
-                            expiryDB.remove(key);
-                            db.remove(key);
-
-                            clientOutput.write("$-1\r\n");
-                            clientOutput.flush();
-                        }
-                    }
-
-                    String val = db.get(args[1]);
-                    checkEmptyInput(clientOutput,val);
+                    setExpiry(clientOutput, args);
 
                     clientOutput.write("+OK\r\n");
                 } else {
                     clientOutput.write("-ERR wrong number of arguments for 'set' command\r\n");
                 }
+
                 clientOutput.flush();
                 break;
             case "get":
                 if (args.length >= 2 && args[1] != null) {
+                    String key = args[1];
+                    checkExpiry(clientOutput, key);
+
                     String val = db.get(args[1]);
                     checkEmptyInput(clientOutput, val);
                 } else {
@@ -158,6 +142,20 @@ public class InputHandler {
                 break;
         }
         return false;
+    }
+
+    private void checkExpiry(BufferedWriter clientOutput, String key) throws IOException {
+        if(expiryDB.containsKey(key)){
+            long expiryTime = expiryDB.get(key);
+
+            if(System.currentTimeMillis() > expiryTime){
+                expiryDB.remove(key);
+                db.remove(key);
+
+                clientOutput.write("$-1\r\n");
+                clientOutput.flush();
+            }
+        }
     }
 
     private void processBuffer(Socket clientSocket) {
